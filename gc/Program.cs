@@ -1,13 +1,12 @@
 ﻿// https://rosalind.info/problems/gc/
-Console.WriteLine("Boo!");
 FastaParser parser = new();
-parser.Parse(Console.In);
+FastaFile file = parser.Parse(Console.In);
+Console.Write(file.MaxGc());
 record FastaSequence(string Value)
 {
-    public int CountGc()
-    {
-        return CountChar('C') + CountChar('G');
-    }
+    private int CountGc() => CountChar('C') + CountChar('G');
+
+    public double PercentGc() => (double)CountGc() / (double)Value.Length * 100d;
 
     private int CountChar(char c)
     {
@@ -21,11 +20,29 @@ record FastaSequence(string Value)
         }
         return count;
     }
+
+    public override string ToString() => Value;
 }
 
-record FastaId(string Value) { }
-record FastaRecord(FastaId Id, FastaSequence Sequence) { }
-record FastaFile(Dictionary<FastaId, FastaRecord> Records) { }
+record FastaId(string Value) {
+    public override string ToString() => Value;
+}
+record FastaRecord(FastaId Id, FastaSequence Sequence)
+{
+    public override string ToString() => $@"{Id}
+{PercentGc():F6}";
+
+    public double PercentGc() => Sequence.PercentGc();
+}
+record FastaFile(Dictionary<FastaId, FastaSequence> Records)
+{
+
+    public FastaRecord MaxGc()
+    {
+        var entryWithMaxValue = Records.MaxBy(entry => entry.Value.PercentGc());
+        return new FastaRecord(entryWithMaxValue.Key, entryWithMaxValue.Value);   
+    }
+}
 
 class FastaParser
 {
@@ -38,7 +55,7 @@ class FastaParser
             line = textReader.ReadLine();
         }
         EndOfFile();
-        return null;
+        return new FastaFile(lookup);
     }
 
     private void ProcessLine(string line)
@@ -57,7 +74,7 @@ class FastaParser
     }
 
     private string? id = null;
-    private string? sequence;
+    private string sequence = "";
 
     private void ProcessId(string line)
     {
@@ -95,10 +112,10 @@ class FastaParser
 
     private Dictionary<FastaId, FastaSequence> lookup = new();
 
-    private void HandleRecord(string id, string? sequence)
+    private void HandleRecord(string id, string sequence)
     {
         FastaId fastaId = new(id);
         FastaSequence fastaSequence = new(sequence);
-        Console.WriteLine($"{fastaId} {fastaSequence}");
+        lookup.Add(fastaId, fastaSequence);
     }
 }
